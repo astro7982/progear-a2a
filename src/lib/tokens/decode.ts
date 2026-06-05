@@ -1,8 +1,11 @@
 import type { DecodedJWT } from '@/types'
 
 /**
- * Decode a JWT WITHOUT signature verification. Safe for client display and
- * for surfacing the act chain. NEVER use the result for authorization.
+ * Decode a JWT WITHOUT signature verification.
+ *
+ * **Server-only.** Uses Node's Buffer; if you import this from a client
+ * component the bundle will throw at runtime. NEVER use the result for
+ * authorization. The decoded payload is for display + act chain extraction.
  */
 export function decodeJwt(token: string): DecodedJWT | null {
   try {

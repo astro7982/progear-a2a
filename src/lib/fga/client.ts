@@ -12,6 +12,7 @@ export function getFgaClient(): OpenFgaClient {
   const required = [
     'FGA_API_URL',
     'FGA_STORE_ID',
+    'FGA_MODEL_ID',
     'FGA_CLIENT_ID',
     'FGA_CLIENT_SECRET',
     'FGA_API_TOKEN_ISSUER',

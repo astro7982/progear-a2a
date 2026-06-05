@@ -6,26 +6,33 @@ export const runtime = 'nodejs'
 /**
  * SSE that polls Okta System Log every 2s and emits new A2A events.
  * Open continuously to power the audit timeline panel.
+ *
+ * Lifecycle:
+ *   - On client disconnect: cancel() fires → alive=false → next poll iteration exits
+ *   - Hard ceiling at 10 minutes via setTimeout (Vercel function timeout safety)
  */
 export async function GET() {
   const encoder = new TextEncoder()
   const seen = new Set<string>()
+  let alive = true
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null
 
   const stream = new ReadableStream({
     async start(controller) {
       const send = (data: unknown) => {
+        if (!alive) return
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
         } catch {
-          // controller closed; loop will exit on next iteration
+          alive = false
         }
       }
 
       // Initial pull: last 30 minutes
       try {
         const events = await fetchA2aEvents({ limit: 50 })
-        // emit oldest-first so the UI builds in order
         for (const e of events.slice().reverse()) {
+          if (!alive) break
           if (!seen.has(e.uuid)) {
             seen.add(e.uuid)
             send(e)
@@ -36,7 +43,6 @@ export async function GET() {
       }
 
       // Poll loop
-      let alive = true
       const poll = async () => {
         while (alive) {
           await new Promise((r) => setTimeout(r, 2000))
@@ -45,6 +51,7 @@ export async function GET() {
             const sinceIso = new Date(Date.now() - 30 * 1000).toISOString()
             const events = await fetchA2aEvents({ limit: 25, sinceIso })
             for (const e of events.slice().reverse()) {
+              if (!alive) break
               if (!seen.has(e.uuid)) {
                 seen.add(e.uuid)
                 send(e)
@@ -55,16 +62,24 @@ export async function GET() {
           }
         }
       }
-      poll().catch(() => {})
+      poll().catch(() => {
+        alive = false
+      })
 
-      const cancel = () => {
+      // Hard ceiling at 10 minutes
+      timeoutHandle = setTimeout(() => {
         alive = false
         try {
           controller.close()
         } catch {}
-      }
-      // Auto-stop after 10 minutes
-      setTimeout(cancel, 10 * 60 * 1000)
+      }, 10 * 60 * 1000)
+    },
+
+    // Fires when the client disconnects. Stop the poll loop and clear the
+    // safety timeout so we don't leak Okta API calls or function time.
+    cancel() {
+      alive = false
+      if (timeoutHandle) clearTimeout(timeoutHandle)
     },
   })
 

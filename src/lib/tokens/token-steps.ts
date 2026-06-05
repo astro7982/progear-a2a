@@ -160,6 +160,9 @@ export async function executeStep4(t3: string): Promise<string> {
     subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
     requested_token_type: 'urn:ietf:params:oauth:token-type:id-jag',
     audience,
+    // RFC 8707: bind the id-jag to the InventoryMCP resource indicator so
+    // AS-A2A-InventoryMCP accepts it on redemption (Step 5).
+    resource: 'https://progear.com/inventoryMCP-resource',
     scope: 'agent.invoke',
     client_assertion_type: JWT_BEARER_ASSERTION_TYPE,
     client_assertion: clientAssertion,
