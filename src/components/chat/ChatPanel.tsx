@@ -23,7 +23,7 @@ export function ChatPanel({ userEmail, origin, messages, running, signedIn }: Pr
   return (
     <div className="rounded-xl border border-slate-800/60 bg-slate-950/40 backdrop-blur p-4 h-full flex flex-col">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3">
-        Sarah's Conversation
+        Sarah&apos;s Conversation
       </h2>
 
       {/* User identity card */}
