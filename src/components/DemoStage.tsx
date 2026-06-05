@@ -116,8 +116,8 @@ export function DemoStage({ signedIn, userEmail }: DemoStageProps) {
         const body = (await res.json()) as { error?: string }
         if (body.error) msg = body.error
       } catch {}
-      const ts = Date.now()
-      setChatLog([{ agent: 'System', text: msg, ts }])
+      // eslint-disable-next-line react-hooks/purity -- event handler, not render
+      setChatLog([{ agent: 'System', text: msg, ts: Date.now() }])
       setRunning(false)
       return
     }
@@ -173,15 +173,18 @@ export function DemoStage({ signedIn, userEmail }: DemoStageProps) {
         prev.map((s) => (s.num === ev.step ? { ...s, status: 'error', error: ev.error } : s)),
       )
     } else if (ev.type === 'agent_message') {
-      const ts = Date.now()
-      setChatLog((prev) => [...prev, { agent: ev.agent, text: ev.text, ts }])
+      setChatLog((prev) => [
+        ...prev,
+        // eslint-disable-next-line react-hooks/purity -- event handler, not render
+        { agent: ev.agent, text: ev.text, ts: Date.now() },
+      ])
     } else if (ev.type === 'error') {
       // Surface chain-level errors as a system message in the chat panel so
       // the audience sees something concrete instead of a silent stall.
-      const ts = Date.now()
       setChatLog((prev) => [
         ...prev,
-        { agent: 'System', text: `Error: ${ev.message}`, ts },
+        // eslint-disable-next-line react-hooks/purity -- event handler, not render
+        { agent: 'System', text: `Error: ${ev.message}`, ts: Date.now() },
       ])
     } else if (ev.type === 'complete') {
       // No-op for now; future scenes may surface a final summary card.
