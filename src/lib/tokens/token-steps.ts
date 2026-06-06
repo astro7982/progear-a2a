@@ -84,26 +84,19 @@ export async function executeStep1NHI(): Promise<string> {
 }
 
 /**
- * Step 2: ProGearSales agent token-exchanges T1 for an id-jag (T2)
+ * Step 2: ProGearSales agent token-exchanges T1 at the Org AS for an id-jag (T2)
  * targeting AS-A2A-Inventory.
  *
- * Endpoint depends on origin:
- *   HI (T1 issued by Custom AS-A2A-Sales): exchange must happen at the SAME
- *     Custom AS that issued T1. Org AS rejects with invalid_subject_token.
- *   NHI (T1 issued by Custom AS-A2A-Sales via client_credentials): same rule.
- *
- * In Bala's tenant the Sales AS rule already allows
- * urn:ietf:params:oauth:grant-type:token-exchange. The delegation-link
- * (from.clientOrn = web app, to.resourceOrn = sales agent) gates the exchange.
+ * Org AS is the ONLY issuer that can mint `urn:ietf:params:oauth:token-type:id-jag`.
+ * Custom AS endpoints reject with `invalid_requested_token_type`.
  */
 export async function executeStep2(t1: string): Promise<string> {
   const orgUrl = requireEnv('OKTA_ORG_URL')
-  const salesAsId = requireEnv('SALES_AS_ID')
   const inventoryAsId = requireEnv('INVENTORY_AS_ID')
   const salesAgentId = requireEnv('SALES_AGENT_ID')
   const salesAgentJwk = parseJWK('SALES_AGENT_PRIVATE_KEY_JWK')
 
-  const tokenEndpoint = `${orgUrl}/oauth2/${salesAsId}/v1/token`
+  const tokenEndpoint = `${orgUrl}/oauth2/v1/token`
   const audience = `${orgUrl}/oauth2/${inventoryAsId}`
   const clientAssertion = await createClientAssertion(salesAgentJwk, salesAgentId, tokenEndpoint)
 
