@@ -27,6 +27,15 @@ export const authConfig: NextAuthConfig = {
           resource: 'https://progear.com/sales',
         },
       },
+      // RFC 8707 requires the same resource at the token endpoint. Without
+      // this, NextAuth's code exchange returns a token NOT audience-bound to
+      // progear.com/sales, and the Org AS rejects it as invalid_subject_token
+      // when the Sales agent tries to exchange it for an id-jag.
+      token: {
+        params: {
+          resource: 'https://progear.com/sales',
+        },
+      },
     }),
   ],
   session: { strategy: 'jwt' },
