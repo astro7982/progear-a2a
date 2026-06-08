@@ -24,9 +24,15 @@ const oktaFetch: typeof fetch = async (input, init) => {
         ? input.toString()
         : input.url
 
-  console.log(`[oktaFetch] ENTRY url=${url} type=${input?.constructor?.name}`)
   // Only the token-endpoint POST needs mutation.
   if (!/\/oauth2\/[^/]+\/v1\/token$/.test(url)) return fetch(input, init)
+
+  console.log(`[oktaFetch] TOKEN ENDPOINT input=${input?.constructor?.name} body=${init?.body?.constructor?.name} init keys=${init ? Object.keys(init).join(',') : 'undef'}`)
+  if (init?.body) {
+    if (typeof init.body === 'string') console.log(`[oktaFetch] body STRING: ${init.body.slice(0,200)}`)
+    else if (init.body instanceof URLSearchParams) console.log(`[oktaFetch] body URLSearchParams: ${init.body.toString().slice(0,200)}`)
+    else console.log(`[oktaFetch] body OTHER: ${typeof init.body}`)
+  }
 
   // oauth4webapi calls customFetch(request: Request). Clone, read body,
   // inject `resource` if the grant is authorization_code, rebuild fetch.
