@@ -11,6 +11,9 @@ importers:
       '@ai-sdk/anthropic':
         specifier: ^3.0.81
         version: 3.0.81(zod@4.4.3)
+      '@auth/core':
+        specifier: 0.41.2
+        version: 0.41.2
       '@openfga/sdk':
         specifier: ^0.9.6
         version: 0.9.6
