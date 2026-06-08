@@ -16,7 +16,7 @@ const RESOURCE = 'https://progear.com/sales'
  * to the token endpoint with grant_type=authorization_code, append
  * `resource=https://progear.com/sales` to the body before sending.
  */
-const oktaFetch: typeof fetch = (input, init) => {
+const oktaFetch: typeof fetch = async (input, init) => {
   const url =
     typeof input === 'string'
       ? input
@@ -24,26 +24,37 @@ const oktaFetch: typeof fetch = (input, init) => {
         ? input.toString()
         : input.url
   const isTokenEndpoint = /\/oauth2\/[^/]+\/v1\/token$/.test(url)
-  console.log(`[oktaFetch] called url=${url} isTokenEndpoint=${isTokenEndpoint} method=${init?.method}`)
-  try {
-    const body = init?.body
-    if (isTokenEndpoint && typeof body === 'string') {
-      const params = new URLSearchParams(body)
-      console.log(`[oktaFetch] body params: grant_type=${params.get('grant_type')}, has resource=${params.has('resource')}`)
+  if (!isTokenEndpoint) return fetch(input, init)
+
+  // oauth4webapi passes a Request object as the input. Read the body, mutate, rebuild.
+  if (input instanceof Request) {
+    const cloned = input.clone()
+    const text = await cloned.text()
+    const params = new URLSearchParams(text)
+    if (params.get('grant_type') === 'authorization_code' && !params.has('resource')) {
+      params.set('resource', RESOURCE)
+      return fetch(input.url, {
+        method: input.method,
+        headers: input.headers,
+        body: params.toString(),
+      })
+    }
+    return fetch(input, init)
+  }
+
+  // Fallback: init.body might already be a string or URLSearchParams
+  if (init?.body) {
+    if (typeof init.body === 'string') {
+      const params = new URLSearchParams(init.body)
       if (params.get('grant_type') === 'authorization_code' && !params.has('resource')) {
         params.set('resource', RESOURCE)
-        console.log(`[oktaFetch] INJECTED resource=${RESOURCE}`)
         return fetch(input, { ...init, body: params.toString() })
       }
-    } else if (isTokenEndpoint && body instanceof URLSearchParams) {
-      console.log(`[oktaFetch] body is URLSearchParams: grant_type=${body.get('grant_type')}`)
-      if (body.get('grant_type') === 'authorization_code' && !body.has('resource')) {
-        body.set('resource', RESOURCE)
-        console.log(`[oktaFetch] INJECTED resource via URLSearchParams=${RESOURCE}`)
+    } else if (init.body instanceof URLSearchParams) {
+      if (init.body.get('grant_type') === 'authorization_code' && !init.body.has('resource')) {
+        init.body.set('resource', RESOURCE)
       }
     }
-  } catch (e) {
-    console.log(`[oktaFetch] parse error: ${e}`)
   }
   return fetch(input, init)
 }
