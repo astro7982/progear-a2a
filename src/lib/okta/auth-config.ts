@@ -23,10 +23,12 @@ const oktaFetch: typeof fetch = async (input, init) => {
       : input instanceof URL
         ? input.toString()
         : input.url
-  const isTokenEndpoint = /\/oauth2\/[^/]+\/v1\/token$/.test(url)
-  if (!isTokenEndpoint) return fetch(input, init)
 
-  // oauth4webapi passes a Request object as the input. Read the body, mutate, rebuild.
+  // Only the token-endpoint POST needs mutation.
+  if (!/\/oauth2\/[^/]+\/v1\/token$/.test(url)) return fetch(input, init)
+
+  // oauth4webapi calls customFetch(request: Request). Clone, read body,
+  // inject `resource` if the grant is authorization_code, rebuild fetch.
   if (input instanceof Request) {
     const cloned = input.clone()
     const text = await cloned.text()
@@ -42,18 +44,12 @@ const oktaFetch: typeof fetch = async (input, init) => {
     return fetch(input, init)
   }
 
-  // Fallback: init.body might already be a string or URLSearchParams
-  if (init?.body) {
-    if (typeof init.body === 'string') {
-      const params = new URLSearchParams(init.body)
-      if (params.get('grant_type') === 'authorization_code' && !params.has('resource')) {
-        params.set('resource', RESOURCE)
-        return fetch(input, { ...init, body: params.toString() })
-      }
-    } else if (init.body instanceof URLSearchParams) {
-      if (init.body.get('grant_type') === 'authorization_code' && !init.body.has('resource')) {
-        init.body.set('resource', RESOURCE)
-      }
+  // Fallback path for when init.body carries the form body directly.
+  if (typeof init?.body === 'string') {
+    const params = new URLSearchParams(init.body)
+    if (params.get('grant_type') === 'authorization_code' && !params.has('resource')) {
+      params.set('resource', RESOURCE)
+      return fetch(input, { ...init, body: params.toString() })
     }
   }
   return fetch(input, init)
