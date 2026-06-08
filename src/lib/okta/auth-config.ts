@@ -17,24 +17,33 @@ const RESOURCE = 'https://progear.com/sales'
  * `resource=https://progear.com/sales` to the body before sending.
  */
 const oktaFetch: typeof fetch = (input, init) => {
+  const url =
+    typeof input === 'string'
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : input.url
+  const isTokenEndpoint = /\/oauth2\/[^/]+\/v1\/token$/.test(url)
+  console.log(`[oktaFetch] called url=${url} isTokenEndpoint=${isTokenEndpoint} method=${init?.method}`)
   try {
-    const url =
-      typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url
-    const isTokenEndpoint = /\/oauth2\/[^/]+\/v1\/token$/.test(url)
     const body = init?.body
     if (isTokenEndpoint && typeof body === 'string') {
       const params = new URLSearchParams(body)
+      console.log(`[oktaFetch] body params: grant_type=${params.get('grant_type')}, has resource=${params.has('resource')}`)
       if (params.get('grant_type') === 'authorization_code' && !params.has('resource')) {
         params.set('resource', RESOURCE)
+        console.log(`[oktaFetch] INJECTED resource=${RESOURCE}`)
         return fetch(input, { ...init, body: params.toString() })
       }
+    } else if (isTokenEndpoint && body instanceof URLSearchParams) {
+      console.log(`[oktaFetch] body is URLSearchParams: grant_type=${body.get('grant_type')}`)
+      if (body.get('grant_type') === 'authorization_code' && !body.has('resource')) {
+        body.set('resource', RESOURCE)
+        console.log(`[oktaFetch] INJECTED resource via URLSearchParams=${RESOURCE}`)
+      }
     }
-  } catch {
-    // fall through to default fetch on parse errors
+  } catch (e) {
+    console.log(`[oktaFetch] parse error: ${e}`)
   }
   return fetch(input, init)
 }
