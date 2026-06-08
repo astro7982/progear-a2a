@@ -47,23 +47,25 @@ const oktaFetch: typeof fetch = (input, init) => {
 export const authConfig: NextAuthConfig = {
   trustHost: true,
   providers: [
-    Okta({
-      clientId: process.env.WEBAPP_CLIENT_ID,
-      clientSecret: process.env.WEBAPP_CLIENT_SECRET,
-      issuer: `${process.env.OKTA_ORG_URL}/oauth2/${process.env.WEBAPP_AUTH_SERVER_ID}`,
-      authorization: {
-        params: {
-          scope: 'openid profile email agent.invoke',
-          // RFC 8707: AS uses this to mint a token bound to the agent's
-          // resourceUrl (https://progear.com/sales).
-          resource: RESOURCE,
+    {
+      ...Okta({
+        clientId: process.env.WEBAPP_CLIENT_ID,
+        clientSecret: process.env.WEBAPP_CLIENT_SECRET,
+        issuer: `${process.env.OKTA_ORG_URL}/oauth2/${process.env.WEBAPP_AUTH_SERVER_ID}`,
+        authorization: {
+          params: {
+            scope: 'openid profile email agent.invoke',
+            // RFC 8707: AS uses this to mint a token bound to the agent's
+            // resourceUrl (https://progear.com/sales).
+            resource: RESOURCE,
+          },
         },
-      },
-      // RFC 8707 also requires the resource at the token endpoint. NextAuth's
-      // built-in OIDC flow doesn't carry it through, so we inject it via the
-      // customFetch hook below.
+      }),
+      // The Okta() helper passes options under .options but never sets
+      // [customFetch] on the provider object. Set it explicitly here so
+      // @auth/core's OAuth code-grant invokes our wrapper.
       [customFetch]: oktaFetch,
-    }),
+    },
   ],
   session: { strategy: 'jwt' },
   callbacks: {
