@@ -21,7 +21,7 @@ export function decodeJwt(token: string): DecodedJWT | null {
 
 export interface ActLayer {
   sub: string
-  sub_profile?: 'user' | 'service' | 'ai_agent'
+  sub_profile?: 'user' | 'service' | 'ai_agent' | 'web_app'
   aud?: string
   raw: Record<string, unknown>
 }
