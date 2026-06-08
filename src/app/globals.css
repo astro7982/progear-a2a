@@ -1,107 +1,76 @@
 @import 'tailwindcss';
 
 :root {
-  /* Editorial dark, warm rather than icy */
-  --bg-base: #0b0e16;
-  --bg-deep: #060810;
-  --bg-surface: #131826;
-  --bg-elevated: #1a2033;
-  --line: #2a3148;
-  --line-soft: #1d2335;
+  --bg: #f8f9fb;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f1f3f6;
+  --text-primary: #1a1d26;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border: #e5e7eb;
+  --border-light: #f0f1f3;
 
-  --ink: #f3ede0; /* warm off-white */
-  --ink-muted: #b9b2a1;
-  --ink-quiet: #6e6a5e;
+  --human: #ec4899;
+  --human-bg: #fdf2f8;
+  --agent-blue: #3b82f6;
+  --agent-blue-bg: #eff6ff;
+  --agent-green: #10b981;
+  --agent-green-bg: #ecfdf5;
+  --agent-amber: #f59e0b;
+  --agent-amber-bg: #fffbeb;
+  --db-gray: #6b7280;
+  --db-gray-bg: #f3f4f6;
 
-  --accent: #5b8fff; /* refined Okta blue */
-  --accent-glow: #5b8fff33;
-  --trust: #d4a847; /* warm amber for "secured" moments */
-  --danger: #cc6b6b;
-  --success: #6dbb8a;
+  --okta: #1662dd;
+  --success: #22c55e;
+  --success-bg: #f0fdf4;
 
-  --radius-sharp: 4px;
-  --radius-soft: 12px;
-  --radius-pill: 999px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-glow-blue: 0 0 0 3px rgba(59,130,246,0.15);
+  --shadow-glow-green: 0 0 0 3px rgba(16,185,129,0.15);
+  --shadow-glow-pink: 0 0 0 3px rgba(236,72,153,0.15);
 }
 
 @theme inline {
-  --color-background: var(--bg-base);
-  --color-foreground: var(--ink);
-  --color-accent: var(--accent);
-  --color-trust: var(--trust);
-  --color-danger: var(--danger);
-  --color-success: var(--success);
-
-  --font-display: var(--font-display);
-  --font-body: var(--font-body);
-  --font-mono: var(--font-mono);
+  --color-background: var(--bg);
+  --color-foreground: var(--text-primary);
   --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
-html,
-body {
-  background: var(--bg-base);
-  color: var(--ink);
+html, body {
+  background: var(--bg);
+  color: var(--text-primary);
   font-family: var(--font-body), system-ui, sans-serif;
-  font-feature-settings: 'ss01', 'ss02', 'cv11';
 }
 
-body {
-  background-image:
-    radial-gradient(circle at 0% 0%, rgba(91, 143, 255, 0.06) 0%, transparent 38%),
-    radial-gradient(circle at 100% 100%, rgba(212, 168, 71, 0.04) 0%, transparent 50%);
-  background-attachment: fixed;
-}
-
-.font-display {
-  font-family: var(--font-display), Georgia, serif;
-  font-feature-settings: 'ss01';
-  font-optical-sizing: auto;
-}
-
-.font-mono {
-  font-family: var(--font-mono), ui-monospace, monospace;
-}
-
-/* selection */
 ::selection {
-  background: var(--accent);
-  color: var(--bg-deep);
+  background: var(--okta);
+  color: white;
 }
 
-/* gentle separator */
-.hairline {
-  border-color: var(--line);
-}
-
-/* subtle grain — barely there, gives texture without visible noise */
-.grain::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.15'/></svg>");
-  mix-blend-mode: overlay;
-  opacity: 0.4;
-}
-
-/* keyframes */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes pulseRing {
-  0% { box-shadow: 0 0 0 0 var(--accent-glow); }
-  70% { box-shadow: 0 0 0 12px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
+@keyframes drawArrow {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: var(--shadow-sm); }
+  50% { box-shadow: var(--glow, var(--shadow-glow-blue)); }
 }
 
 .fade-up {
-  animation: fadeUp 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fadeUp 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* numerals + ligatures for headings */
-.tabular {
-  font-variant-numeric: tabular-nums lining-nums;
+.pulse-glow {
+  animation: pulseGlow 1.5s ease-in-out infinite;
 }
