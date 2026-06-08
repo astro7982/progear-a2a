@@ -54,6 +54,82 @@ export function Stage({ signedIn, userEmail }: Props) {
     setChainComplete(false)
   }, [])
 
+  const handleEvent = useCallback((ev: ChainSSEEvent) => {
+    if (ev.type === 'origin') {
+      setOrigin({ sub: ev.sub, subProfile: ev.subProfile, rawToken: ev.rawToken })
+      return
+    }
+    if (ev.type === 'agent_message') {
+      const ts = Date.now()
+      setTurns((p) => [
+        ...p,
+        { id: `${ev.agent}-${ts}`, role: 'agent', agent: ev.agent, text: ev.text, ts },
+      ])
+      return
+    }
+    if (ev.type === 'step_start') {
+      const labels = ACTIVITY_LABELS[ev.step]
+      setActivities((p) => [
+        ...p,
+        {
+          id: `step-${ev.step}`,
+          text: labels?.running ?? ev.label,
+          status: 'running',
+        },
+      ])
+      setSteps((p) => [...p, { num: ev.step, label: ev.label, status: 'running' }])
+      return
+    }
+    if (ev.type === 'step_success') {
+      const labels = ACTIVITY_LABELS[ev.step]
+      setActivities((p) =>
+        p.map((a) =>
+          a.id === `step-${ev.step}` ? { ...a, status: 'done', text: labels?.done ?? a.text } : a,
+        ),
+      )
+      setSteps((p) =>
+        p.map((s) =>
+          s.num === ev.step
+            ? {
+                ...s,
+                status: 'success',
+                rawToken: ev.rawToken,
+                actChain: ev.actChain as ActLayer[],
+                audience: ev.audience,
+              }
+            : s,
+        ),
+      )
+      return
+    }
+    if (ev.type === 'complete') {
+      const r = (ev.result as { stockAvailable?: number; sku?: string; warehouse?: string }) ?? {}
+      const ts = Date.now()
+      setTurns((p) => [
+        ...p,
+        {
+          id: `final-${ts}`,
+          role: 'assistant',
+          text: r.stockAvailable
+            ? `Yes — ${r.stockAvailable} units in stock at the ${r.warehouse} warehouse. Plenty for the order.`
+            : 'Done.',
+          ts,
+          outcome: r.stockAvailable
+            ? { kind: 'stock', label: r.sku ?? 'item', value: `${r.stockAvailable} units` }
+            : undefined,
+        },
+      ])
+      return
+    }
+    if (ev.type === 'error') {
+      const ts = Date.now()
+      setTurns((p) => [
+        ...p,
+        { id: `err-${ts}`, role: 'agent', agent: 'System', text: `Error: ${ev.message}`, ts },
+      ])
+    }
+  }, [])
+
   const ask = useCallback(
     async (sceneId: 1 | 2 | 3, prompt: string) => {
       if (!signedIn || running) return
@@ -70,8 +146,11 @@ export function Stage({ signedIn, userEmail }: Props) {
           const body = (await res.json()) as { error?: string }
           if (body.error) msg = body.error
         } catch {}
-        // eslint-disable-next-line react-hooks/purity
-        setTurns((p) => [...p, { id: `err-${Date.now()}`, role: 'agent', agent: 'System', text: msg, ts: Date.now() }])
+        const errTs = Date.now()
+        setTurns((p) => [
+          ...p,
+          { id: `err-${errTs}`, role: 'agent', agent: 'System', text: msg, ts: errTs },
+        ])
         setRunning(false)
         return
       }
@@ -99,91 +178,8 @@ export function Stage({ signedIn, userEmail }: Props) {
       setRunning(false)
       setChainComplete(true)
     },
-    [signedIn, running, reset],
+    [signedIn, running, reset, handleEvent],
   )
-
-  function handleEvent(ev: ChainSSEEvent) {
-    if (ev.type === 'origin') {
-      setOrigin({ sub: ev.sub, subProfile: ev.subProfile, rawToken: ev.rawToken })
-      return
-    }
-    if (ev.type === 'agent_message') {
-      // eslint-disable-next-line react-hooks/purity
-      const ts = Date.now()
-      setTurns((p) => [
-        ...p,
-        { id: `${ev.agent}-${ts}`, role: 'agent', agent: ev.agent, text: ev.text, ts },
-      ])
-      return
-    }
-    if (ev.type === 'step_start') {
-      const labels = ACTIVITY_LABELS[ev.step]
-      setActivities((p) => [
-        ...p,
-        {
-          id: `step-${ev.step}`,
-          text: labels?.running ?? ev.label,
-          status: 'running',
-        },
-      ])
-      setSteps((p) => [
-        ...p,
-        { num: ev.step, label: ev.label, status: 'running' },
-      ])
-      return
-    }
-    if (ev.type === 'step_success') {
-      const labels = ACTIVITY_LABELS[ev.step]
-      setActivities((p) =>
-        p.map((a) =>
-          a.id === `step-${ev.step}` ? { ...a, status: 'done', text: labels?.done ?? a.text } : a,
-        ),
-      )
-      setSteps((p) =>
-        p.map((s) =>
-          s.num === ev.step
-            ? {
-                ...s,
-                status: 'success',
-                rawToken: ev.rawToken,
-                actChain: ev.actChain as ActLayer[],
-                audience: ev.audience,
-              }
-            : s,
-        ),
-      )
-      return
-    }
-    if (ev.type === 'complete') {
-      // Promote the result to a hero outcome bubble.
-      const r = (ev.result as { stockAvailable?: number; sku?: string; warehouse?: string }) ?? {}
-      // eslint-disable-next-line react-hooks/purity
-      const ts = Date.now()
-      setTurns((p) => [
-        ...p,
-        {
-          id: `final-${ts}`,
-          role: 'assistant',
-          text: r.stockAvailable
-            ? `Yes — ${r.stockAvailable} units in stock at the ${r.warehouse} warehouse. Plenty for the order.`
-            : 'Done.',
-          ts,
-          outcome: r.stockAvailable
-            ? { kind: 'stock', label: r.sku ?? 'item', value: `${r.stockAvailable} units` }
-            : undefined,
-        },
-      ])
-      return
-    }
-    if (ev.type === 'error') {
-      // eslint-disable-next-line react-hooks/purity
-      const ts = Date.now()
-      setTurns((p) => [
-        ...p,
-        { id: `err-${ts}`, role: 'agent', agent: 'System', text: `Error: ${ev.message}`, ts },
-      ])
-    }
-  }
 
   return (
     <div className="px-6 py-12 sm:py-20">

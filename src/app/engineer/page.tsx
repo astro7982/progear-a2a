@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { auth, signIn, signOut } from '@/lib/okta/auth'
 import { DemoStage } from '@/components/DemoStage'
 
@@ -25,9 +26,9 @@ export default async function EngineerView() {
             <p className="text-xs text-slate-400">
               Token chain visualizer ·{' '}
               <span className="font-mono">bala-secures-ai.oktapreview.com</span> ·{' '}
-              <a href="/" className="underline decoration-dotted hover:text-slate-200">
+              <Link href="/" className="underline decoration-dotted hover:text-slate-200">
                 back to demo
-              </a>
+              </Link>
             </p>
           </div>
           <div className="flex items-center gap-3">

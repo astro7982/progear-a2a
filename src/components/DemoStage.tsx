@@ -116,7 +116,6 @@ export function DemoStage({ signedIn, userEmail }: DemoStageProps) {
         const body = (await res.json()) as { error?: string }
         if (body.error) msg = body.error
       } catch {}
-      // eslint-disable-next-line react-hooks/purity -- event handler, not render
       setChatLog([{ agent: 'System', text: msg, ts: Date.now() }])
       setRunning(false)
       return
@@ -175,7 +174,6 @@ export function DemoStage({ signedIn, userEmail }: DemoStageProps) {
     } else if (ev.type === 'agent_message') {
       setChatLog((prev) => [
         ...prev,
-        // eslint-disable-next-line react-hooks/purity -- event handler, not render
         { agent: ev.agent, text: ev.text, ts: Date.now() },
       ])
     } else if (ev.type === 'error') {
@@ -183,7 +181,6 @@ export function DemoStage({ signedIn, userEmail }: DemoStageProps) {
       // the audience sees something concrete instead of a silent stall.
       setChatLog((prev) => [
         ...prev,
-        // eslint-disable-next-line react-hooks/purity -- event handler, not render
         { agent: 'System', text: `Error: ${ev.message}`, ts: Date.now() },
       ])
     } else if (ev.type === 'complete') {
