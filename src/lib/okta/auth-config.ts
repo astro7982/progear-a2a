@@ -27,15 +27,23 @@ const oktaFetch: typeof fetch = async (input, init) => {
   // Only the token-endpoint POST needs mutation.
   if (!/\/oauth2\/[^/]+\/v1\/token$/.test(url)) return fetch(input, init)
 
-  console.log(`[oktaFetch] TOKEN ENDPOINT input=${input?.constructor?.name} body=${init?.body?.constructor?.name} init keys=${init ? Object.keys(init).join(',') : 'undef'}`)
-  if (init?.body) {
-    if (typeof init.body === 'string') console.log(`[oktaFetch] body STRING: ${init.body.slice(0,200)}`)
-    else if (init.body instanceof URLSearchParams) console.log(`[oktaFetch] body URLSearchParams: ${init.body.toString().slice(0,200)}`)
-    else console.log(`[oktaFetch] body OTHER: ${typeof init.body}`)
+  // oauth4webapi v3 invokes customFetch(url: string, init: { body: URLSearchParams, ... }).
+  // Mutate the URLSearchParams body in place to inject `resource`.
+  if (init?.body instanceof URLSearchParams) {
+    if (init.body.get('grant_type') === 'authorization_code' && !init.body.has('resource')) {
+      init.body.set('resource', RESOURCE)
+    }
+    return fetch(input, init)
   }
 
-  // oauth4webapi calls customFetch(request: Request). Clone, read body,
-  // inject `resource` if the grant is authorization_code, rebuild fetch.
+  // Defensive fallbacks for other init.body shapes / a Request input.
+  if (typeof init?.body === 'string') {
+    const params = new URLSearchParams(init.body)
+    if (params.get('grant_type') === 'authorization_code' && !params.has('resource')) {
+      params.set('resource', RESOURCE)
+      return fetch(input, { ...init, body: params.toString() })
+    }
+  }
   if (input instanceof Request) {
     const cloned = input.clone()
     const text = await cloned.text()
@@ -47,16 +55,6 @@ const oktaFetch: typeof fetch = async (input, init) => {
         headers: input.headers,
         body: params.toString(),
       })
-    }
-    return fetch(input, init)
-  }
-
-  // Fallback path for when init.body carries the form body directly.
-  if (typeof init?.body === 'string') {
-    const params = new URLSearchParams(init.body)
-    if (params.get('grant_type') === 'authorization_code' && !params.has('resource')) {
-      params.set('resource', RESOURCE)
-      return fetch(input, { ...init, body: params.toString() })
     }
   }
   return fetch(input, init)
