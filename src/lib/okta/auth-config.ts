@@ -1,15 +1,48 @@
 import type { NextAuthConfig } from 'next-auth'
 import Okta from 'next-auth/providers/okta'
+import { customFetch } from '@auth/core'
+
+const RESOURCE = 'https://progear.com/sales'
 
 /**
- * NextAuth v5 config: Okta OIDC provider pointed at AS-A2A-Sales (Bala's
- * Custom Authorization Server). Captures Sarah's access_token on callback
- * and stores it in the JWT session so server actions can read it as T1
- * for the chain.
+ * NextAuth v5 ignores `token.params` for OIDC providers, so the resource
+ * indicator (RFC 8707) doesn't make it into the code-for-token request body.
+ * The result: the issued access token has aud=`<sales-resource>` (the AS
+ * audience) instead of aud=`https://progear.com/sales` (the agent's
+ * resourceUrl). Org AS then refuses it as `invalid_subject_token` when
+ * the Sales agent tries to exchange it for an id-jag.
  *
- * The redirect URI registered with Bala's tenant is
- *   /api/auth/callback/okta
- * (NextAuth's default callback path for the "okta" provider).
+ * Fix: intercept fetch via the `customFetch` symbol. When the request goes
+ * to the token endpoint with grant_type=authorization_code, append
+ * `resource=https://progear.com/sales` to the body before sending.
+ */
+const oktaFetch: typeof fetch = (input, init) => {
+  try {
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url
+    const isTokenEndpoint = /\/oauth2\/[^/]+\/v1\/token$/.test(url)
+    const body = init?.body
+    if (isTokenEndpoint && typeof body === 'string') {
+      const params = new URLSearchParams(body)
+      if (params.get('grant_type') === 'authorization_code' && !params.has('resource')) {
+        params.set('resource', RESOURCE)
+        return fetch(input, { ...init, body: params.toString() })
+      }
+    }
+  } catch {
+    // fall through to default fetch on parse errors
+  }
+  return fetch(input, init)
+}
+
+/**
+ * NextAuth v5 config: Okta OIDC provider pointed at AS-A2A-Sales.
+ * Captures Sarah's access_token on callback and stores it in the JWT
+ * session so server actions can read it as T1 for the chain.
  */
 export const authConfig: NextAuthConfig = {
   trustHost: true,
@@ -21,27 +54,20 @@ export const authConfig: NextAuthConfig = {
       authorization: {
         params: {
           scope: 'openid profile email agent.invoke',
-          // RFC 8707: required for the AS to mint a token with this audience.
-          // The AS-A2A-Sales policy allows resource indicator
-          // https://progear.com/sales (Sales agent's resourceUrl).
-          resource: 'https://progear.com/sales',
+          // RFC 8707: AS uses this to mint a token bound to the agent's
+          // resourceUrl (https://progear.com/sales).
+          resource: RESOURCE,
         },
       },
-      // RFC 8707 requires the same resource at the token endpoint. Without
-      // this, NextAuth's code exchange returns a token NOT audience-bound to
-      // progear.com/sales, and the Org AS rejects it as invalid_subject_token
-      // when the Sales agent tries to exchange it for an id-jag.
-      token: {
-        params: {
-          resource: 'https://progear.com/sales',
-        },
-      },
+      // RFC 8707 also requires the resource at the token endpoint. NextAuth's
+      // built-in OIDC flow doesn't carry it through, so we inject it via the
+      // customFetch hook below.
+      [customFetch]: oktaFetch,
     }),
   ],
   session: { strategy: 'jwt' },
   callbacks: {
     async jwt({ token, account }) {
-      // First sign-in: account has the fresh tokens
       if (account?.access_token) {
         token.accessToken = account.access_token
         token.idToken = account.id_token
