@@ -116,7 +116,8 @@ export function DemoStage({ signedIn, userEmail }: DemoStageProps) {
         const body = (await res.json()) as { error?: string }
         if (body.error) msg = body.error
       } catch {}
-      setChatLog([{ agent: 'System', text: msg, ts: Date.now() }])
+      const ts = Date.now()
+      setChatLog([{ agent: 'System', text: msg, ts }])
       setRunning(false)
       return
     }
@@ -172,17 +173,13 @@ export function DemoStage({ signedIn, userEmail }: DemoStageProps) {
         prev.map((s) => (s.num === ev.step ? { ...s, status: 'error', error: ev.error } : s)),
       )
     } else if (ev.type === 'agent_message') {
-      setChatLog((prev) => [
-        ...prev,
-        { agent: ev.agent, text: ev.text, ts: Date.now() },
-      ])
+      const ts = Date.now()
+      setChatLog((prev) => [...prev, { agent: ev.agent, text: ev.text, ts }])
     } else if (ev.type === 'error') {
       // Surface chain-level errors as a system message in the chat panel so
       // the audience sees something concrete instead of a silent stall.
-      setChatLog((prev) => [
-        ...prev,
-        { agent: 'System', text: `Error: ${ev.message}`, ts: Date.now() },
-      ])
+      const ts = Date.now()
+      setChatLog((prev) => [...prev, { agent: 'System', text: `Error: ${ev.message}`, ts }])
     } else if (ev.type === 'complete') {
       // No-op for now; future scenes may surface a final summary card.
     }
