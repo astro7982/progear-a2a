@@ -24,6 +24,7 @@ const oktaFetch: typeof fetch = async (input, init) => {
         ? input.toString()
         : input.url
 
+  console.log(`[oktaFetch] ENTRY url=${url} type=${input?.constructor?.name}`)
   // Only the token-endpoint POST needs mutation.
   if (!/\/oauth2\/[^/]+\/v1\/token$/.test(url)) return fetch(input, init)
 
