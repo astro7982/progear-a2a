@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Bot, User, Loader2, ShieldCheck, ShieldAlert, MessageSquare, ScrollText, Code2 } from 'lucide-react'
+import { Send, Bot, User, Loader2, ShieldCheck, ShieldAlert, MessageSquare, Code2, Clock, ExternalLink } from 'lucide-react'
 import type { ActLayer } from '@/lib/tokens/decode'
-import { CompactRelay, IDLE_RELAY, type RelayState } from './CompactRelay'
-import { GovernanceLog, type GovEvent } from './GovernanceLog'
+import { ProvenanceTree, IDLE_PROVENANCE, type ProvenanceState, type NodeId } from './ProvenanceTree'
+import type { GovEvent } from './GovernanceLog'
 import { EngineeringPanel } from './EngineeringPanel'
 
 interface PendingApproval {
@@ -21,7 +21,6 @@ interface Message {
   role: 'user' | 'assistant' | 'system'
   text: string
   agentUsed?: string
-  action?: string
   chainSuccess?: boolean
   pendingApproval?: PendingApproval
 }
@@ -48,30 +47,121 @@ interface ChatResponse {
 const QUICK_ACTIONS = [
   'Check TR-9 stock levels',
   'Order 50 basketballs for Westside High',
-  'Order 75 basketballs for State University',
+  'Order 500 basketballs for State University',
 ]
 
-type Tab = 'chat' | 'governance' | 'engineering'
+const SCOPES_USER = ['inventory.read', 'inventory.write', 'pricing.read', 'customer.read']
+const SCOPES_SALES = ['inventory.read', 'inventory.write', 'pricing.read']
+const SCOPES_INVENTORY = ['inventory.read', 'inventory.write']
+const SCOPES_DB = ['inventory.read']
+
+type Tab = 'activity' | 'engineering'
 
 interface Props {
   userName: string
 }
 
 export function AIChatPanel({ userName }: Props) {
-  const [tab, setTab] = useState<Tab>('chat')
+  const [tab, setTab] = useState<Tab>('activity')
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [relay, setRelay] = useState<RelayState>(IDLE_RELAY)
+  const [provenance, setProvenance] = useState<ProvenanceState>(IDLE_PROVENANCE)
   const [govEvents, setGovEvents] = useState<GovEvent[]>([])
   const [latestChain, setLatestChain] = useState<ChatChain | null>(null)
+  const [highlightedNode, setHighlightedNode] = useState<NodeId | null>(null)
+  const [stalledOrder, setStalledOrder] = useState<PendingApproval | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (tab === 'chat') {
+    if (tab === 'activity') {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
     }
   }, [messages, tab])
+
+  const onEventClick = useCallback((nodeId: NodeId | null) => {
+    if (!nodeId) return
+    setHighlightedNode(nodeId)
+    setTab('activity')
+    window.setTimeout(() => setHighlightedNode(null), 2400)
+  }, [])
+
+  const resumeAfterApproval = useCallback((order: PendingApproval) => {
+    setProvenance(p => ({
+      ...p,
+      edgeInventoryDb: 'success',
+      db: { state: 'success', scopes: SCOPES_DB },
+    }))
+    pushGov(setGovEvents, {
+      type: 'APPROVAL_GRANTED',
+      actor: order.approver,
+      target: `order:${order.orderId}`,
+      detail: 'Manager granted approval; gate cleared',
+      comment: 'Gate cleared, secure handoff resumed',
+      status: 'success',
+      nodeId: 'db',
+    })
+    pushGov(setGovEvents, {
+      type: 'TOOL_CALL',
+      actor: 'Inventory Agent',
+      target: 'inventory.place_order',
+      detail: `Order ${order.orderId} placed for ${order.quantity} units`,
+      comment: `Action attributable to ${userName.split(' ')[0]}`,
+      status: 'success',
+      nodeId: 'db',
+    })
+    setMessages(prev => [
+      ...prev,
+      {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        text:
+          `${order.approver.split('@')[0]} approved order ${order.orderId.slice(-6)}. Placing the order now — ` +
+          `${order.quantity} units of ${order.product}.`,
+        chainSuccess: true,
+      },
+    ])
+    setStalledOrder(null)
+  }, [userName])
+
+  // Poll for approval after the gate stalls. Resumes the tree when Mike approves.
+  useEffect(() => {
+    if (!stalledOrder) return
+    const orderId = stalledOrder.orderId
+    let cancelled = false
+
+    const poll = async () => {
+      try {
+        const r = await fetch('/api/approval/pending', { cache: 'no-store' })
+        if (!r.ok) return
+        const data = (await r.json()) as { approvals?: { orderId: string; status: string }[] }
+        const found = data.approvals?.find(a => a.orderId === orderId)
+        if (!cancelled && found && found.status === 'approved') {
+          resumeAfterApproval(stalledOrder)
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const id = window.setInterval(poll, 1500)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [stalledOrder, resumeAfterApproval])
+
+  const grantAsMike = useCallback(async (order: PendingApproval) => {
+    try {
+      await fetch('/api/approval/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.orderId, approverLogin: order.approver }),
+      })
+    } catch {
+      // poll loop will pick up server-side success
+    }
+  }, [])
 
   const send = useCallback(async (text: string) => {
     if (!text.trim() || loading) return
@@ -81,10 +171,9 @@ export function AIChatPanel({ userName }: Props) {
     setMessages(prev => [...prev, userMsg])
     setLoading(true)
 
-    // Step 1 — User hop active
-    setRelay({
-      ...IDLE_RELAY,
-      user: 'active',
+    setProvenance({
+      ...IDLE_PROVENANCE,
+      user: { state: 'active', scopes: SCOPES_USER },
     })
     pushGov(setGovEvents, {
       type: 'AUTH',
@@ -93,38 +182,44 @@ export function AIChatPanel({ userName }: Props) {
       detail: 'User session validated, request initiated',
       comment: `${userName.split(' ')[0]}'s identity verified`,
       status: 'info',
+      nodeId: 'user',
     })
-    await tinyDelay(180)
+    await tinyDelay(200)
 
-    // Step 2 — User → Sales
-    setRelay(r => ({ ...r, user: 'success', shieldUserToSales: 'active', sales: 'active' }))
+    setProvenance(p => ({
+      ...p,
+      user: { state: 'success', scopes: SCOPES_USER },
+      edgeUserSales: 'active',
+      sales: { state: 'active', scopes: SCOPES_SALES },
+    }))
     pushGov(setGovEvents, {
       type: 'ID_JAG_MINTED',
       actor: 'Sales Agent',
-      target: 'Inventory AS',
+      target: 'Inventory authorization server',
       detail: 'token-exchange @ Org AS → id-jag (T2)',
-      comment: 'Agent delegated authority',
+      comment: 'Sales agent receives delegated authority',
       status: 'info',
+      nodeId: 'sales',
     })
-    await tinyDelay(220)
+    await tinyDelay(280)
 
-    // Step 3 — Sales → Inventory
-    setRelay(r => ({
-      ...r,
-      shieldUserToSales: 'success',
-      sales: 'success',
-      shieldSalesToInventory: 'active',
-      inventory: 'active',
+    setProvenance(p => ({
+      ...p,
+      edgeUserSales: 'success',
+      sales: { state: 'success', scopes: SCOPES_SALES },
+      edgeSalesInventory: 'active',
+      inventory: { state: 'active', scopes: SCOPES_INVENTORY },
     }))
     pushGov(setGovEvents, {
       type: 'ACCESS_TOKEN',
       actor: 'Sales Agent',
       target: 'Inventory Agent',
       detail: 'jwt-bearer @ AS-A2A-Inventory → access token (T3)',
-      comment: 'Sarah preserved in act chain',
+      comment: `${userName.split(' ')[0]} preserved in act chain`,
       status: 'info',
+      nodeId: 'inventory',
     })
-    await tinyDelay(220)
+    await tinyDelay(280)
 
     try {
       const res = await fetch('/api/chat', {
@@ -135,30 +230,30 @@ export function AIChatPanel({ userName }: Props) {
       const data = (await res.json()) as ChatResponse
 
       if (data.error) {
-        setRelay(IDLE_RELAY)
+        setProvenance(IDLE_PROVENANCE)
         setMessages(prev => [...prev, { id: `e-${Date.now()}`, role: 'system', text: data.error! }])
       } else {
         const blocked = !!data.pendingApproval
         const chainOk = !!data.chain?.success
 
-        // Final relay state
         if (blocked) {
-          setRelay({
-            user: 'success',
-            shieldUserToSales: 'success',
-            sales: 'success',
-            shieldSalesToInventory: 'success',
-            inventory: 'success',
-            shieldInventoryToDb: 'blocked',
-            db: 'idle',
+          setProvenance({
+            user: { state: 'success', scopes: SCOPES_USER },
+            sales: { state: 'success', scopes: SCOPES_SALES },
+            inventory: { state: 'success', scopes: SCOPES_INVENTORY },
+            db: { state: 'idle', scopes: [] },
+            edgeUserSales: 'success',
+            edgeSalesInventory: 'success',
+            edgeInventoryDb: 'blocked',
           })
           pushGov(setGovEvents, {
             type: 'FGA_CHECK',
             actor: 'Inventory Agent',
             target: `order:${data.pendingApproval!.orderId}`,
             detail: `qty=${data.pendingApproval!.quantity} exceeds 50-unit self-approval limit`,
-            comment: 'FGA returned NOT allowed',
+            comment: 'Permission rule blocked the action',
             status: 'pending',
+            nodeId: 'inventory',
           })
           pushGov(setGovEvents, {
             type: 'APPROVAL_REQUIRED',
@@ -167,33 +262,41 @@ export function AIChatPanel({ userName }: Props) {
             detail: `Routed to ${data.pendingApproval!.approver} for human approval`,
             comment: 'Mike has been notified',
             status: 'pending',
+            nodeId: 'db',
           })
+          setStalledOrder(data.pendingApproval!)
         } else if (chainOk) {
-          setRelay({
-            user: 'success',
-            shieldUserToSales: 'success',
-            sales: 'success',
-            shieldSalesToInventory: 'success',
-            inventory: 'success',
-            shieldInventoryToDb: 'success',
-            db: 'success',
+          setProvenance({
+            user: { state: 'success', scopes: SCOPES_USER },
+            sales: { state: 'success', scopes: SCOPES_SALES },
+            inventory: { state: 'success', scopes: SCOPES_INVENTORY },
+            db: { state: 'success', scopes: SCOPES_DB },
+            edgeUserSales: 'success',
+            edgeSalesInventory: 'success',
+            edgeInventoryDb: 'success',
           })
           pushGov(setGovEvents, {
             type: 'TOOL_CALL',
             actor: 'Inventory Agent',
             target: 'inventory.check_stock',
             detail: 'Tool executed against ProGear inventory DB',
-            comment: 'Action attributable to Sarah',
+            comment: `Action attributable to ${userName.split(' ')[0]}`,
             status: 'success',
+            nodeId: 'db',
           })
         } else {
-          setRelay(r => ({ ...r, inventory: 'blocked', shieldSalesToInventory: 'blocked' }))
+          setProvenance(p => ({
+            ...p,
+            edgeSalesInventory: 'blocked',
+            inventory: { state: 'blocked', scopes: [] },
+          }))
           pushGov(setGovEvents, {
             type: 'CHAIN_FAILED',
             actor: 'Sales Agent',
-            target: 'Inventory AS',
+            target: 'Inventory authorization server',
             detail: 'Token chain failed before tool call',
             status: 'error',
+            nodeId: 'inventory',
           })
         }
 
@@ -206,14 +309,13 @@ export function AIChatPanel({ userName }: Props) {
             role: 'assistant',
             text: data.text,
             agentUsed: data.agentUsed,
-            action: data.action,
             chainSuccess: data.chain?.success,
             pendingApproval: data.pendingApproval ?? undefined,
           },
         ])
       }
     } catch {
-      setRelay(IDLE_RELAY)
+      setProvenance(IDLE_PROVENANCE)
       setMessages(prev => [
         ...prev,
         { id: `e-${Date.now()}`, role: 'system', text: 'Network error. Please try again.' },
@@ -225,7 +327,6 @@ export function AIChatPanel({ userName }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Panel header */}
       <div className="px-4 py-2.5 border-b border-[var(--border)] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="h-7 w-7 rounded-[var(--radius-sm)] bg-[var(--brand)]/10 flex items-center justify-center">
@@ -238,31 +339,22 @@ export function AIChatPanel({ userName }: Props) {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex border-b border-[var(--border)] shrink-0 bg-[var(--bg-card)]">
-        <TabButton active={tab === 'chat'} onClick={() => setTab('chat')} icon={<MessageSquare className="h-3 w-3" />} label="Chat" />
-        <TabButton
-          active={tab === 'governance'}
-          onClick={() => setTab('governance')}
-          icon={<ScrollText className="h-3 w-3" />}
-          label="Governance"
-          badge={govEvents.length || undefined}
-        />
+        <TabButton active={tab === 'activity'} onClick={() => setTab('activity')} icon={<MessageSquare className="h-3 w-3" />} label="Activity" />
         <TabButton
           active={tab === 'engineering'}
           onClick={() => setTab('engineering')}
           icon={<Code2 className="h-3 w-3" />}
           label="Engineering"
+          badge={govEvents.length || undefined}
         />
       </div>
 
-      {/* Always-visible compact relay */}
-      <CompactRelay state={relay} userName={userName} />
+      <ProvenanceTree state={provenance} userName={userName} highlightedNode={highlightedNode} />
 
-      {/* Tab body */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {tab === 'chat' && (
-          <ChatTab
+        {tab === 'activity' && (
+          <ActivityTab
             messages={messages}
             loading={loading}
             input={input}
@@ -270,9 +362,10 @@ export function AIChatPanel({ userName }: Props) {
             send={send}
             scrollRef={scrollRef}
             userName={userName}
+            stalledOrder={stalledOrder}
+            grantAsMike={grantAsMike}
           />
         )}
-        {tab === 'governance' && <GovernanceLog events={govEvents} />}
         {tab === 'engineering' && (
           <EngineeringPanel
             actChain={latestChain?.actChain ?? []}
@@ -282,7 +375,7 @@ export function AIChatPanel({ userName }: Props) {
             t3Audience={latestChain?.t3Audience}
             hasChain={!!latestChain?.success}
             events={govEvents}
-            onEventClick={() => {}}
+            onEventClick={onEventClick}
           />
         )}
       </div>
@@ -290,7 +383,7 @@ export function AIChatPanel({ userName }: Props) {
   )
 }
 
-function ChatTab({
+function ActivityTab({
   messages,
   loading,
   input,
@@ -298,6 +391,8 @@ function ChatTab({
   send,
   scrollRef,
   userName,
+  stalledOrder,
+  grantAsMike,
 }: {
   messages: Message[]
   loading: boolean
@@ -306,6 +401,8 @@ function ChatTab({
   send: (s: string) => void
   scrollRef: React.RefObject<HTMLDivElement | null>
   userName: string
+  stalledOrder: PendingApproval | null
+  grantAsMike: (o: PendingApproval) => void
 }) {
   return (
     <>
@@ -317,7 +414,7 @@ function ChatTab({
               Hi {userName.split(' ')[0]}! I can help with orders, inventory, and pricing.
             </p>
             <p className="text-[11px] text-[var(--text-muted)]">
-              The agent relay above shows every hop. Try one of the quick actions below.
+              The tree above shows {userName.split(' ')[0]} on every step. Try a quick action below.
             </p>
           </div>
         )}
@@ -357,12 +454,12 @@ function ChatTab({
                   {m.text}
                 </div>
                 {m.role === 'assistant' && m.pendingApproval && (
-                  <ApprovalBanner approval={m.pendingApproval} />
+                  <ApprovalBanner approval={m.pendingApproval} onGrantAsMike={grantAsMike} />
                 )}
                 {m.role === 'assistant' && m.chainSuccess && !m.pendingApproval && (
                   <div className="flex items-center gap-1 mt-1.5 text-[9px] text-[var(--okta-blue)]">
                     <ShieldCheck className="h-2.5 w-2.5" />
-                    Identity verified · full chain preserved
+                    {userName.split(' ')[0]} is on every step — chain preserved
                   </div>
                 )}
               </div>
@@ -373,12 +470,13 @@ function ChatTab({
         {loading && (
           <div className="flex items-center gap-2 text-[12px] text-[var(--text-muted)]">
             <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--brand)]" />
-            Agents processing...
+            Agents working…
           </div>
         )}
+
+        {stalledOrder && !loading && <StallStatus order={stalledOrder} />}
       </div>
 
-      {/* Quick actions */}
       {messages.length === 0 && (
         <div className="px-5 pb-3 flex gap-2 flex-wrap shrink-0">
           {QUICK_ACTIONS.map((q, i) => (
@@ -393,7 +491,6 @@ function ChatTab({
         </div>
       )}
 
-      {/* Input */}
       <div className="px-4 py-3 border-t border-[var(--border)] shrink-0">
         <form
           onSubmit={e => {
@@ -423,7 +520,13 @@ function ChatTab({
   )
 }
 
-function ApprovalBanner({ approval }: { approval: PendingApproval }) {
+function ApprovalBanner({
+  approval,
+  onGrantAsMike,
+}: {
+  approval: PendingApproval
+  onGrantAsMike: (o: PendingApproval) => void
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 4 }}
@@ -432,13 +535,49 @@ function ApprovalBanner({ approval }: { approval: PendingApproval }) {
       className="mt-2 rounded-[var(--radius-sm)] border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-3 py-2.5 flex items-start gap-2"
     >
       <ShieldAlert className="h-3.5 w-3.5 text-[var(--warning)] shrink-0 mt-0.5" />
-      <div className="text-[11px] leading-relaxed">
-        <div className="font-semibold text-[var(--warning)] mb-0.5">Manager approval required</div>
+      <div className="text-[11px] leading-relaxed flex-1 min-w-0">
+        <div className="font-semibold text-[var(--warning)] mb-0.5">Manager approval needed</div>
         <div className="text-[var(--text-secondary)]">
-          Order {approval.orderId} ({approval.quantity} × {approval.product}) routed to{' '}
-          <span className="font-mono text-[var(--text)]">{approval.approver}</span> for review.
+          Order <span className="font-mono text-[var(--text)]">{approval.orderId.slice(-6)}</span> ({approval.quantity} × {approval.product}) routed to{' '}
+          <span className="font-mono text-[var(--text)]">{approval.approver}</span>.
+        </div>
+        <div className="flex flex-wrap gap-1.5 mt-1.5">
+          <a
+            href="/approver/mike"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-[var(--warning)]/40 text-[var(--warning)] hover:bg-[var(--warning)]/10 transition"
+          >
+            Open Mike’s view
+            <ExternalLink className="h-2.5 w-2.5" />
+          </a>
+          <button
+            onClick={() => onGrantAsMike(approval)}
+            className="text-[10px] px-2 py-1 rounded bg-[var(--warning)] text-[#1a1209] font-medium hover:bg-[var(--warning)]/90 transition"
+          >
+            Approve as Mike (demo)
+          </button>
         </div>
       </div>
+    </motion.div>
+  )
+}
+
+function StallStatus({ order }: { order: PendingApproval }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="flex items-center gap-2 text-[11px] text-[var(--warning)]"
+    >
+      <Clock className="h-3 w-3" />
+      <motion.span
+        animate={{ opacity: [0.55, 1, 0.55] }}
+        transition={{ duration: 1.6, repeat: Infinity }}
+      >
+        Awaiting {order.approver.split('@')[0]}’s approval…
+      </motion.span>
     </motion.div>
   )
 }
