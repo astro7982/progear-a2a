@@ -38,8 +38,22 @@
 
   /* Governance / Okta */
   --okta: #007dc1;
+  --okta-blue: #0ea5e9;
   --okta-light: #0ea5e9;
   --tech-purple: #8b5cf6;
+
+  /* Sidebar (dark sports console) */
+  --sidebar: #12121f;
+  --sidebar-text: #94a3b8;
+  --sidebar-text-active: #ffffff;
+  --sidebar-active: #ff6b3520;
+  --sidebar-hover: #ffffff08;
+
+  /* Relay actor colors */
+  --relay-human: #f97316;
+  --relay-agent-1: #3b82f6;
+  --relay-agent-2: #10b981;
+  --relay-db: #94a3b8;
 
   /* Radii */
   --radius: 10px;

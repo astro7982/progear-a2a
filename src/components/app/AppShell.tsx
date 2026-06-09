@@ -128,7 +128,7 @@ export function AppShell({ user, signOutAction }: Props) {
 
           {/* AI Panel (right side) */}
           {aiOpen && (
-            <div className="w-[420px] border-l border-[var(--border)] bg-[var(--bg-card)] flex flex-col shrink-0">
+            <div className="w-[460px] border-l border-[var(--border)] bg-[var(--bg-card)] flex flex-col shrink-0">
               <AIChatPanel userName={user.name} />
             </div>
           )}
