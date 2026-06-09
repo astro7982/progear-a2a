@@ -108,7 +108,7 @@ export function AIChatPanel({ userName }: Props) {
             transition={{ duration: 0.2 }}
             className="overflow-hidden border-b border-[var(--border)]"
           >
-            <div className="px-5 py-3 bg-blue-50/50">
+            <div className="px-5 py-3 bg-[var(--okta)]/5">
               <div className="text-[10px] uppercase tracking-[0.14em] text-[var(--okta-blue)] font-medium mb-2">
                 Okta A2A Identity Chain (live)
               </div>
@@ -170,10 +170,10 @@ export function AIChatPanel({ userName }: Props) {
                 )}
                 <div className={`rounded-[var(--radius-sm)] px-3.5 py-2.5 text-[13px] leading-relaxed inline-block text-left ${
                   m.role === 'user'
-                    ? 'bg-[var(--sidebar)] text-white'
+                    ? 'bg-gradient-to-r from-[var(--brand)] to-[var(--brand-dark)] text-white'
                     : m.role === 'system'
-                      ? 'bg-red-50 border border-red-200 text-red-700'
-                      : 'bg-[var(--bg)] border border-[var(--border)]'
+                      ? 'bg-[var(--danger-bg)] border border-[var(--danger)]/30 text-[var(--danger)]'
+                      : 'bg-[var(--bg-elevated)] border border-[var(--border)]'
                 }`}>
                   {m.text}
                 </div>

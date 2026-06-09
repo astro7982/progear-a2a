@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Package, ShoppingCart, Users, BarChart3, Bot, Settings, ChevronRight, TrendingUp, AlertTriangle, Clock } from 'lucide-react'
+import { Package, ShoppingCart, Users, BarChart3, Bot, Settings, ChevronRight, TrendingUp, AlertTriangle, Clock, Activity, Trophy } from 'lucide-react'
 import { AIChatPanel } from './AIChatPanel'
 
 interface Props {
@@ -14,6 +14,7 @@ const NAV = [
   { icon: ShoppingCart, label: 'Orders', active: false },
   { icon: Package, label: 'Inventory', active: false },
   { icon: Users, label: 'Customers', active: false },
+  { icon: Activity, label: 'Activity Log', active: false },
   { icon: Settings, label: 'Settings', active: false },
 ]
 
@@ -95,16 +96,25 @@ export function AppShell({ user, signOutAction }: Props) {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="h-14 border-b border-[var(--border)] bg-[var(--bg-card)] flex items-center justify-between px-6 shrink-0">
-          <div>
+        {/* Top bar with sports texture */}
+        <header className="h-14 border-b-4 border-[var(--brand)] bg-gradient-to-r from-[var(--bg-card)] via-[#1e1e3a] to-[var(--bg-card)] flex items-center justify-between px-6 shrink-0 relative overflow-hidden">
+          {/* Subtle sports pattern overlay */}
+          <div className="absolute inset-0 opacity-[0.03]">
+            <svg className="w-full h-full" viewBox="0 0 120 40" preserveAspectRatio="none">
+              <line x1="60" y1="0" x2="60" y2="40" stroke="#ff6b35" strokeWidth="0.5"/>
+              <circle cx="60" cy="20" r="12" fill="none" stroke="#ff6b35" strokeWidth="0.3"/>
+              <line x1="0" y1="20" x2="120" y2="20" stroke="#ff6b35" strokeWidth="0.2"/>
+            </svg>
+          </div>
+          <div className="relative z-10 flex items-center gap-3">
+            <Trophy className="h-4 w-4 text-[var(--brand)]" />
             <h1 className="text-[16px] font-semibold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-              Dashboard
+              Sales Dashboard
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="relative z-10 flex items-center gap-3">
             <span className="text-[11px] text-[var(--text-muted)]">
-              Powered by <span className="font-semibold text-[var(--okta-blue)]">Okta for AI Agents</span>
+              Secured by <span className="font-semibold text-[var(--okta)]">Okta for AI Agents</span>
             </span>
           </div>
         </header>
@@ -157,7 +167,7 @@ function DashboardContent() {
       </div>
 
       {/* Recent orders */}
-      <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-sm">
+      <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
           <h2 className="text-[14px] font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Recent Orders</h2>
           <button className="text-[12px] text-[var(--brand)] hover:underline flex items-center gap-1">
@@ -173,13 +183,31 @@ function DashboardContent() {
       </div>
 
       {/* Low stock alert */}
-      <div className="mt-4 bg-[var(--warning-bg)] border border-[var(--warning)]/20 rounded-[var(--radius)] px-5 py-4">
+      <div className="mt-4 bg-[var(--warning-bg)] border border-[var(--warning)]/30 rounded-[var(--radius)] px-5 py-4">
         <div className="flex items-start gap-3">
           <AlertTriangle className="h-4 w-4 text-[var(--warning)] mt-0.5 shrink-0" />
           <div>
-            <div className="text-[13px] font-medium text-[var(--text)]">Low stock alert</div>
+            <div className="text-[13px] font-medium text-[var(--text)]">⚠️ Low stock alert</div>
             <div className="text-[12px] text-[var(--text-secondary)] mt-0.5">
-              Regulation Hoops (8 remaining), Court Flooring Panels (8 remaining). Consider reordering from distributor.
+              Regulation Hoops (8 remaining), Court Flooring Panels (8 remaining). Use AI Assistant to reorder from distributor →
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Agent governance badge */}
+      <div className="mt-4 bg-[var(--okta)]/10 border border-[var(--okta)]/20 rounded-[var(--radius)] px-5 py-4">
+        <div className="flex items-start gap-3">
+          <div className="h-8 w-8 rounded-full bg-[var(--okta)]/20 flex items-center justify-center shrink-0">
+            <svg className="h-4 w-4 text-[var(--okta-light)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+          </div>
+          <div>
+            <div className="text-[13px] font-medium text-[var(--okta-light)]">Agent-to-Agent Identity Chain Active</div>
+            <div className="text-[12px] text-[var(--text-secondary)] mt-0.5">
+              Every AI action is traceable to you. Sales Agent → Inventory Agent chain verified by Okta. <a href="/engineer" className="text-[var(--okta-light)] hover:underline">View technical details →</a>
             </div>
           </div>
         </div>
@@ -190,14 +218,14 @@ function DashboardContent() {
 
 function MetricCard({ label, value, change, icon: Icon, color }: { label: string; value: string; change: string; icon: typeof ShoppingCart; color: string }) {
   return (
-    <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-sm p-5">
+    <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-sm p-5 hover:border-[var(--brand)]/30 transition">
       <div className="flex items-center justify-between mb-3">
         <span className="text-[12px] text-[var(--text-secondary)]">{label}</span>
-        <div className="h-8 w-8 rounded-[var(--radius-sm)] flex items-center justify-center" style={{ backgroundColor: `${color}12` }}>
+        <div className="h-8 w-8 rounded-[var(--radius-sm)] flex items-center justify-center" style={{ backgroundColor: `${color}20` }}>
           <Icon className="h-4 w-4" style={{ color }} />
         </div>
       </div>
-      <div className="text-[24px] font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>{value}</div>
+      <div className="text-[24px] font-bold tracking-tight text-[var(--text)]" style={{ fontFamily: 'var(--font-display)' }}>{value}</div>
       <div className="text-[11px] text-[var(--text-muted)] mt-1 flex items-center gap-1">
         <Clock className="h-3 w-3" />
         {change}
@@ -209,13 +237,13 @@ function MetricCard({ label, value, change, icon: Icon, color }: { label: string
 function OrderRow({ customer, product, qty, status, time }: { customer: string; product: string; qty: number; status: string; time: string }) {
   const statusColor = status === 'Fulfilled' ? 'var(--success)' : status === 'Processing' ? 'var(--brand)' : 'var(--text-muted)'
   return (
-    <div className="px-5 py-3.5 flex items-center gap-4">
+    <div className="px-5 py-3.5 flex items-center gap-4 hover:bg-[var(--bg-elevated)]/50 transition">
       <div className="flex-1 min-w-0">
         <div className="text-[13px] font-medium text-[var(--text)] truncate">{customer}</div>
-        <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">{product} × {qty}</div>
+        <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">🏀 {product} × {qty}</div>
       </div>
       <div className="flex items-center gap-2">
-        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
+        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: statusColor }} />
         <span className="text-[11px] text-[var(--text-secondary)]">{status}</span>
       </div>
       <span className="text-[11px] text-[var(--text-muted)] w-[80px] text-right">{time}</span>
