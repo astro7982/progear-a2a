@@ -1,76 +1,103 @@
 @import 'tailwindcss';
 
 :root {
-  --bg: #f8f9fb;
-  --bg-surface: #ffffff;
-  --bg-elevated: #f1f3f6;
-  --text-primary: #1a1d26;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --border: #e5e7eb;
-  --border-light: #f0f1f3;
+  /* ProGear brand */
+  --brand: #e85d04;
+  --brand-dark: #c44d03;
+  --brand-light: #ff8a3d;
+  --brand-bg: #fff5ed;
 
-  --human: #ec4899;
-  --human-bg: #fdf2f8;
-  --agent-blue: #3b82f6;
-  --agent-blue-bg: #eff6ff;
-  --agent-green: #10b981;
-  --agent-green-bg: #ecfdf5;
-  --agent-amber: #f59e0b;
-  --agent-amber-bg: #fffbeb;
-  --db-gray: #6b7280;
-  --db-gray-bg: #f3f4f6;
+  /* Surfaces */
+  --sidebar: #1a1a2e;
+  --sidebar-hover: #252545;
+  --sidebar-active: #2d2d55;
+  --sidebar-text: #a0a0c0;
+  --sidebar-text-active: #ffffff;
 
-  --okta: #1662dd;
-  --success: #22c55e;
-  --success-bg: #f0fdf4;
+  --bg: #f7f8fa;
+  --bg-card: #ffffff;
+  --bg-panel: #ffffff;
 
-  --radius: 12px;
-  --radius-sm: 8px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-glow-blue: 0 0 0 3px rgba(59,130,246,0.15);
-  --shadow-glow-green: 0 0 0 3px rgba(16,185,129,0.15);
-  --shadow-glow-pink: 0 0 0 3px rgba(236,72,153,0.15);
+  /* Text */
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+
+  /* Borders */
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+
+  /* Accents */
+  --success: #10b981;
+  --success-bg: #ecfdf5;
+  --warning: #f59e0b;
+  --warning-bg: #fffbeb;
+  --danger: #ef4444;
+  --okta-blue: #1662dd;
+
+  /* Relay colors */
+  --relay-human: #ec4899;
+  --relay-human-bg: #fdf2f8;
+  --relay-agent-1: #3b82f6;
+  --relay-agent-1-bg: #eff6ff;
+  --relay-agent-2: #10b981;
+  --relay-agent-2-bg: #ecfdf5;
+  --relay-db: #64748b;
+  --relay-db-bg: #f1f5f9;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.08);
 }
 
 @theme inline {
   --color-background: var(--bg);
-  --color-foreground: var(--text-primary);
+  --color-foreground: var(--text);
   --font-sans: var(--font-body);
   --font-mono: var(--font-mono);
 }
 
 html, body {
   background: var(--bg);
-  color: var(--text-primary);
+  color: var(--text);
   font-family: var(--font-body), system-ui, sans-serif;
 }
 
 ::selection {
-  background: var(--okta);
+  background: var(--brand);
   color: white;
 }
 
+/* Scrollbar styling for the chat panel */
+.chat-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.chat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes drawArrow {
-  from { stroke-dashoffset: 100; }
-  to { stroke-dashoffset: 0; }
-}
-
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: var(--shadow-sm); }
-  50% { box-shadow: var(--glow, var(--shadow-glow-blue)); }
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(232, 93, 4, 0.3); }
+  70% { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
 }
 
 .fade-up {
-  animation: fadeUp 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.pulse-glow {
-  animation: pulseGlow 1.5s ease-in-out infinite;
+.pulse-brand {
+  animation: pulse-ring 2s ease-in-out infinite;
 }
