@@ -41,6 +41,8 @@ interface ChainResult {
   t5Header?: Record<string, unknown>
   t5Payload?: Record<string, unknown>
   t5TokenPreview?: string
+  mcpCaller?: McpCallerInfo
+  mcpMetadata?: McpResponseMetadata
 }
 
 interface McpResultBlock {
@@ -139,6 +141,13 @@ export async function POST(req: NextRequest) {
           error: stockResp.error,
           message: stockResp.message,
         }
+        // Mirror caller + metadata onto the chain block so the engineering
+        // panel can render real provenance + scope/audience/latency data.
+        chainResult = {
+          ...chainResult,
+          mcpCaller: stockResp.caller,
+          mcpMetadata: stockResp.metadata,
+        }
         if (stockResp.ok) {
           liveInventory = toInventorySnapshot(stockResp.result)
         }
@@ -155,7 +164,10 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Generate the LLM response, augmented with the LIVE inventory when we have it.
-  const { text, agentUsed, action } = await generateResponse(message, liveInventory)
+  //    Builds a plain-text context block from the MCP catalog so the LLM sees
+  //    actual inventory data and grounds its reply in real numbers.
+  const inventoryContext = liveInventory.length > 0 ? buildInventoryContext(liveInventory) : ''
+  const { text, agentUsed, action } = await generateResponse(message, inventoryContext)
 
   // 3. Order-gate (FGA): if Sarah is asking to place an order > threshold and
   //    we don't already have a manager approval on file, register the order in
@@ -209,8 +221,20 @@ export async function POST(req: NextRequest) {
     agentUsed,
     action,
     chain: chainResult,
-    mcp: mcpBlock,
+    mcpResult: mcpBlock,
     user: userLogin,
     pendingApproval,
   })
+}
+
+function buildInventoryContext(items: InventoryItemSnapshot[]): string {
+  const lines = items.map((i) => {
+    const lowFlag = i.needsReorder ? ' (low — reorder)' : ''
+    const unit = i.unit + (i.stock === 1 ? '' : 's')
+    return `- ${i.name}: ${i.stock} ${unit} on hand at $${i.unitPrice}/${i.unit}${lowFlag}`
+  })
+  return [
+    'LIVE inventory snapshot (returned by inventory.check_stock on the MCP server — these are real, authoritative numbers; quote them as-is):',
+    ...lines,
+  ].join('\n')
 }

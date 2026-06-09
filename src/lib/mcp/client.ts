@@ -88,7 +88,7 @@ async function invokeTool<T>(
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify({ arguments: args }),
+      body: JSON.stringify({ input: args }),
       signal: controller.signal,
     })
     const text = await response.text()

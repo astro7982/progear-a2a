@@ -2,6 +2,12 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+/**
+ * Subset of the MCP product snapshot used by callers that still want to pass
+ * a structured inventory list. The chat route prefers the plain-text `context`
+ * arg below; this type stays exported for callers/tests that build the list
+ * themselves.
+ */
 export interface InventoryItemSnapshot {
   id: string
   name: string
@@ -11,7 +17,7 @@ export interface InventoryItemSnapshot {
   needsReorder?: boolean
 }
 
-const BASE_SYSTEM = `You are the ProGear Sales AI assistant. You help Sarah (a sales rep at ProGear, a sporting goods company) with:
+const SYSTEM_PROMPT = `You are the ProGear Sales AI assistant. You help Sarah (a sales rep at ProGear, a sporting goods company) with:
 - Checking inventory stock levels
 - Processing sales orders
 - Looking up customer information
@@ -25,45 +31,37 @@ When Sarah asks about stock or orders, you respond as if you've consulted with s
 - When an order requires items not in stock, you mention the distributor order
 
 Keep responses concise (2-3 sentences). Be helpful and specific with numbers.
-When processing orders, confirm the details back.`
+When processing orders, confirm the details back.
 
-const FALLBACK_SNAPSHOT = `Current inventory snapshot (use these numbers):
+If a "LIVE inventory snapshot" block is included with the user's message, those are real, authoritative numbers fetched from the inventory MCP server. Quote them as-is. Do NOT invent or substitute fallback numbers when a live snapshot is provided.
+
+If no snapshot is provided, you may use these fallback figures:
 - Pro Basketballs (TR-9 Trail Pack): 247 units in Memphis warehouse
 - Standard Basketballs: 89 units
 - Basketball Hoops (Regulation): 12 units
 - Training Cones (set of 20): 340 sets
 - Team Uniforms: 56 sets
-- Court Flooring Panels: 8 panels`
+- Court Flooring Panels: 8 panels
 
-function buildLiveSnapshot(items: InventoryItemSnapshot[]): string {
-  const lines = items.map((i) => {
-    const lowFlag = i.needsReorder ? ' (low — reorder)' : ''
-    return `- ${i.name}: ${i.stock} ${i.unit}${i.stock === 1 ? '' : 's'} on hand at $${i.unitPrice}/${i.unit}${lowFlag}`
-  })
-  return [
-    'Current inventory snapshot (LIVE from the Inventory MCP server, use these numbers):',
-    ...lines,
-    '',
-    'These are real, authoritative numbers returned by inventory.check_stock — quote them as-is.',
-  ].join('\n')
-}
+If asked to order more than what's in stock, mention that the Inventory Agent will order the remainder from the distributor.`
 
 export async function generateResponse(
   userMessage: string,
-  inventory?: InventoryItemSnapshot[],
+  context?: string,
 ): Promise<{
   text: string
   agentUsed: 'sales' | 'inventory' | 'pricing' | 'customer'
   action: string
 }> {
-  const snapshot = inventory && inventory.length > 0 ? buildLiveSnapshot(inventory) : FALLBACK_SNAPSHOT
-  const system = `${BASE_SYSTEM}\n\n${snapshot}\n\nIf asked to order more than what's in stock, mention that the Inventory Agent will order the remainder from the distributor.`
+  const composedUser = context && context.trim().length > 0
+    ? `${context.trim()}\n\n---\nUser question: ${userMessage}`
+    : userMessage
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 300,
-    system,
-    messages: [{ role: 'user', content: userMessage }],
+    system: SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: composedUser }],
   })
 
   const text = response.content[0].type === 'text' ? response.content[0].text : 'I could not process that request.'
