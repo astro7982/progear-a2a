@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.81",
+    "@anthropic-ai/sdk": "^0.102.0",
     "@auth/core": "0.41.2",
     "@openfga/sdk": "^0.9.6",
     "@radix-ui/react-avatar": "^1.1.11",
