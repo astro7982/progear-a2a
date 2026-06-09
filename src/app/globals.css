@@ -6,21 +6,30 @@
   --brand-dark: #e85d04;
   --brand-light: #ff8c5a;
   --brand-bg: #ff6b3510;
+  --brand-glow: rgba(255, 107, 53, 0.35);
+
+  /* Court / field accents */
+  --court-brown: #7c3a0a;
+  --court-orange: #f97316;
+  --field-green: #15803d;
 
   /* Dark workspace (premium sports feel) */
-  --bg: #0d0d14;
-  --bg-card: #1a1a2e;
-  --bg-elevated: #222240;
+  --bg: #0a0a14;
+  --bg-deep: #07070f;
+  --bg-card: #14142a;
+  --bg-card-hover: #1a1a35;
+  --bg-elevated: #1f1f3d;
   --bg-input: #16213e;
 
   /* Text on dark */
   --text: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-secondary: #b4bcd0;
+  --text-muted: #7a8294;
 
   /* Borders */
-  --border: #2a2a3e;
+  --border: #2a2a45;
   --border-light: #1e1e35;
+  --border-glow: rgba(255, 107, 53, 0.18);
 
   /* Agent colors */
   --agent-sales: #3b82f6;
@@ -39,11 +48,11 @@
   /* Governance / Okta */
   --okta: #007dc1;
   --okta-blue: #0ea5e9;
-  --okta-light: #0ea5e9;
+  --okta-light: #38bdf8;
   --tech-purple: #8b5cf6;
 
   /* Sidebar (dark sports console) */
-  --sidebar: #12121f;
+  --sidebar: #0c0c1c;
   --sidebar-text: #94a3b8;
   --sidebar-text-active: #ffffff;
   --sidebar-active: #ff6b3520;
@@ -59,9 +68,14 @@
   --radius: 10px;
   --radius-sm: 6px;
   --radius-lg: 14px;
+  --radius-xl: 20px;
 
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+  /* Shadows + glows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
+  --shadow-brand: 0 8px 24px rgba(255, 107, 53, 0.25);
+  --shadow-brand-lg: 0 16px 48px rgba(255, 107, 53, 0.35);
 }
 
 @theme inline {
@@ -77,15 +91,18 @@ html, body {
   font-family: var(--font-body), system-ui, sans-serif;
 }
 
-/* Dark gradient body — court-like depth */
+/* Layered atmospheric body — court-light depth + faint orange aura */
 body {
-  background: linear-gradient(to bottom, #0d0d14, #1a1a2e);
+  background:
+    radial-gradient(circle at 12% -10%, rgba(255, 107, 53, 0.08), transparent 45%),
+    radial-gradient(circle at 92% 110%, rgba(56, 189, 248, 0.06), transparent 45%),
+    linear-gradient(180deg, #0a0a14 0%, #14142a 100%);
   min-height: 100vh;
 }
 
 /* Smooth transitions globally */
 * {
-  transition-property: background-color, border-color, box-shadow, color, opacity;
+  transition-property: background-color, border-color, box-shadow, color, opacity, transform;
   transition-duration: 150ms;
   transition-timing-function: ease-in-out;
 }
@@ -97,22 +114,61 @@ body {
 
 /* Sports-branded scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: var(--bg-card);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--brand);
   border-radius: 4px;
 }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--brand) 0%, var(--brand-dark) 100%);
+  border-radius: 4px;
+  border: 1px solid var(--bg-card);
+}
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--brand-dark);
+  background: linear-gradient(180deg, var(--brand-light) 0%, var(--brand) 100%);
 }
 
 .chat-scroll::-webkit-scrollbar {
   width: 4px;
 }
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: var(--brand);
+  border-radius: 2px;
+}
+
+/* Sport texture utility — subtle court/field line pattern */
+.sports-texture {
+  background-image:
+    linear-gradient(rgba(255, 107, 53, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 107, 53, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.sports-texture-fine {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Premium card with gradient border */
+.card-premium {
+  background: linear-gradient(180deg, rgba(31, 31, 61, 0.7) 0%, rgba(20, 20, 42, 0.85) 100%);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+
+.card-premium-hover:hover {
+  border-color: var(--border-glow);
+  box-shadow: 0 4px 24px rgba(255, 107, 53, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Glow utilities */
+.glow-brand { box-shadow: 0 0 0 1px var(--brand-glow), 0 8px 32px var(--brand-glow); }
+.glow-success { box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35), 0 8px 32px rgba(34, 197, 94, 0.18); }
 
 /* Animations */
 @keyframes fadeUp {
@@ -121,14 +177,78 @@ body {
 }
 
 @keyframes pulse-brand {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.4); }
-  50% { box-shadow: 0 0 0 8px transparent; }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.45); }
+  50% { box-shadow: 0 0 0 12px transparent; }
 }
 
 @keyframes ping-slow {
   75%, 100% { transform: scale(1.8); opacity: 0; }
 }
 
+@keyframes bounce-ball {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(3deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(255, 107, 53, 0.25), 0 0 24px rgba(255, 107, 53, 0.15); }
+  50% { box-shadow: 0 0 24px rgba(255, 107, 53, 0.45), 0 0 48px rgba(255, 107, 53, 0.25); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 .fade-up { animation: fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 .pulse-brand { animation: pulse-brand 2s ease-in-out infinite; }
 .ping-slow { animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+.bounce-ball { animation: bounce-ball 0.9s ease-in-out infinite; }
+.float-slow { animation: float-slow 6s ease-in-out infinite; }
+.glow-pulse { animation: glow-pulse 2.4s ease-in-out infinite; }
+.slide-in-right { animation: slide-in-right 320ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Stagger helpers */
+.stagger > *:nth-child(1) { animation-delay: 60ms; }
+.stagger > *:nth-child(2) { animation-delay: 140ms; }
+.stagger > *:nth-child(3) { animation-delay: 220ms; }
+.stagger > *:nth-child(4) { animation-delay: 300ms; }
+.stagger > *:nth-child(5) { animation-delay: 380ms; }
+.stagger > *:nth-child(6) { animation-delay: 460ms; }
+
+/* Shimmer for loading metrics */
+.shimmer-text {
+  background: linear-gradient(90deg, var(--text-secondary) 0%, var(--brand-light) 50%, var(--text-secondary) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.4s linear infinite;
+}
+
+/* Lift on hover — generic card lift */
+.lift {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+.lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Focus ring */
+input:focus, button:focus-visible, textarea:focus {
+  outline: none;
+}
+input:focus, textarea:focus {
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15);
+}
