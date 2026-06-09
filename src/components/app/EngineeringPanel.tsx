@@ -1,7 +1,9 @@
 'use client'
 
-import { Code2, ExternalLink, KeyRound, GitBranch } from 'lucide-react'
+import { Code2, ExternalLink, KeyRound, GitBranch, ScrollText } from 'lucide-react'
 import type { ActLayer } from '@/lib/tokens/decode'
+import { GovernanceLog, type GovEvent } from './GovernanceLog'
+import type { NodeId } from './ProvenanceTree'
 
 const AGENT_NAMES: Record<string, string> = {
   wlpzamsn8ruzX9RiH1d7: 'Sales Agent',
@@ -17,6 +19,8 @@ interface Props {
   t3TokenPreview?: string
   t3Audience?: string
   hasChain: boolean
+  events: GovEvent[]
+  onEventClick: (nodeId: NodeId | null) => void
 }
 
 export function EngineeringPanel({
@@ -26,6 +30,8 @@ export function EngineeringPanel({
   t3TokenPreview,
   t3Audience,
   hasChain,
+  events,
+  onEventClick,
 }: Props) {
   return (
     <div className="h-full flex flex-col bg-[var(--bg-card)] overflow-hidden">
@@ -44,11 +50,18 @@ export function EngineeringPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto chat-scroll px-4 py-4 space-y-5">
-        {!hasChain && (
+        {!hasChain && events.length === 0 && (
           <div className="text-[11px] text-[var(--text-muted)] italic">
             Send a message to populate the token chain.
           </div>
         )}
+
+        {/* System Log first — most architects want to see live events */}
+        <Section title="Okta System Log" icon={<ScrollText className="h-3 w-3" />}>
+          <div className="rounded-[var(--radius-sm)] border border-[var(--border)] overflow-hidden h-[200px]">
+            <GovernanceLog events={events} onEventClick={onEventClick} />
+          </div>
+        </Section>
 
         {hasChain && (
           <>

@@ -281,6 +281,8 @@ export function AIChatPanel({ userName }: Props) {
             t3TokenPreview={latestChain?.t3TokenPreview}
             t3Audience={latestChain?.t3Audience}
             hasChain={!!latestChain?.success}
+            events={govEvents}
+            onEventClick={() => {}}
           />
         )}
       </div>
