@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Package, ShoppingCart, Users, BarChart3, Bot, Settings, ChevronRight, TrendingUp, AlertTriangle, Clock, Activity, Trophy, Zap, ShieldCheck, Search, Filter, Mail, Calendar, DollarSign, KeyRound, Lock, CircleCheck, GitBranch, ServerCog, Award } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Package, ShoppingCart, Users, BarChart3, Bot, Settings, ChevronRight, TrendingUp, AlertTriangle, Clock, Activity, Trophy, Zap, ShieldCheck, Search, Filter, Mail, Calendar, DollarSign, KeyRound, Lock, CircleCheck, GitBranch, ServerCog, Award, Maximize2 } from 'lucide-react'
 import { AIChatPanel } from './AIChatPanel'
 
 interface Props {
@@ -37,8 +37,37 @@ function ProGearMark({ className = 'h-8 w-8' }: { className?: string }) {
 
 export function AppShell({ user, signOutAction }: Props) {
   const [aiOpen, setAiOpen] = useState(true)
+  const [poppedOut, setPoppedOut] = useState(false)
   const [currentPage, setCurrentPage] = useState<Page>('Dashboard')
+  const popupRef = useRef<Window | null>(null)
   const firstName = user.name.split(' ')[0] || 'there'
+
+  // Poll the popup window; when it closes, dock the panel back inline.
+  useEffect(() => {
+    if (!poppedOut) return
+    const id = window.setInterval(() => {
+      const w = popupRef.current
+      if (!w || w.closed) {
+        popupRef.current = null
+        setPoppedOut(false)
+      }
+    }, 500)
+    return () => window.clearInterval(id)
+  }, [poppedOut])
+
+  // If the popup is already open and the user clicks the button again, focus it.
+  const handlePopOut = () => {
+    if (popupRef.current && !popupRef.current.closed) {
+      popupRef.current.focus()
+      return
+    }
+    const features = 'width=520,height=820,resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no,location=no'
+    const w = window.open('/chat', 'progear-ai-chat', features)
+    if (w) {
+      popupRef.current = w
+      setPoppedOut(true)
+    }
+  }
 
   return (
     <div className="h-full flex">
@@ -179,11 +208,48 @@ export function AppShell({ user, signOutAction }: Props) {
             </div>
           </main>
 
-          {/* AI Panel (right side) */}
-          {aiOpen && (
+          {/* AI Panel (right side) — hidden while popped out */}
+          {aiOpen && !poppedOut && (
             <div className="w-[480px] border-l border-[var(--border)] bg-gradient-to-b from-[var(--bg-card)] via-[#171732] to-[var(--bg-card)] flex flex-col shrink-0 relative">
               <div className="absolute inset-0 sports-texture opacity-30 pointer-events-none" />
-              <AIChatPanel userName={user.name} />
+              <AIChatPanel userName={user.name} onPopOut={handlePopOut} />
+            </div>
+          )}
+
+          {/* Docked banner — visible while popped out so user can re-dock */}
+          {aiOpen && poppedOut && (
+            <div className="w-[300px] border-l border-[var(--border)] bg-gradient-to-b from-[var(--bg-card)] via-[#171732] to-[var(--bg-card)] flex flex-col shrink-0 relative">
+              <div className="absolute inset-0 sports-texture opacity-30 pointer-events-none" />
+              <div className="relative z-10 flex flex-col h-full p-5 items-center justify-center text-center">
+                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[var(--brand)] via-[var(--brand-dark)] to-[#a83a05] flex items-center justify-center shadow-[0_4px_16px_rgba(255,107,53,0.4)] mb-4">
+                  <Maximize2 className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-[14px] font-bold tracking-tight mb-1" style={{ fontFamily: 'var(--font-display)' }}>
+                  AI chat is in another window
+                </div>
+                <p className="text-[11px] text-[var(--text-secondary)] mb-5 leading-relaxed">
+                  ProGear AI was popped out to a separate window. Close that window or click below to dock it back here.
+                </p>
+                <button
+                  onClick={() => {
+                    if (popupRef.current && !popupRef.current.closed) popupRef.current.close()
+                    popupRef.current = null
+                    setPoppedOut(false)
+                  }}
+                  className="px-4 py-2 rounded-[var(--radius-sm)] bg-gradient-to-br from-[var(--brand)] to-[var(--brand-dark)] text-white text-[12px] font-semibold hover:shadow-[0_8px_24px_rgba(255,107,53,0.4)] hover:-translate-y-0.5 transition-all"
+                >
+                  Dock back here
+                </button>
+                <div className="mt-3 text-[9px] uppercase tracking-[0.16em] text-[var(--text-muted)] font-medium">
+                  Or focus the popup
+                </div>
+                <button
+                  onClick={() => popupRef.current?.focus()}
+                  className="mt-2 text-[11px] text-[var(--brand-light)] hover:text-[var(--brand)] underline underline-offset-2"
+                >
+                  Bring popup to front
+                </button>
+              </div>
             </div>
           )}
         </div>

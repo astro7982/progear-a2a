@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Bot, User, ShieldCheck, ShieldAlert, MessageSquare, Code2, Clock, ExternalLink, Sparkles, Zap } from 'lucide-react'
+import { Send, Bot, User, ShieldCheck, ShieldAlert, MessageSquare, Code2, Clock, ExternalLink, Sparkles, Zap, Maximize2 } from 'lucide-react'
 import type { ActLayer } from '@/lib/tokens/decode'
 import { ProvenanceTree, IDLE_PROVENANCE, type ProvenanceState, type NodeId } from './ProvenanceTree'
 import type { GovEvent } from './GovernanceLog'
@@ -59,6 +59,7 @@ type Tab = 'activity' | 'engineering'
 
 interface Props {
   userName: string
+  onPopOut?: () => void
 }
 
 // Distinctive ProGear bot avatar — gradient orange disc with stylized 'P' mark
@@ -76,7 +77,7 @@ function BotAvatar({ size = 'md', glow = false }: { size?: 'sm' | 'md' | 'lg'; g
   )
 }
 
-export function AIChatPanel({ userName }: Props) {
+export function AIChatPanel({ userName, onPopOut }: Props) {
   const [tab, setTab] = useState<Tab>('activity')
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -358,7 +359,18 @@ export function AIChatPanel({ userName }: Props) {
               </div>
             </div>
           </div>
-          <Zap className="h-3.5 w-3.5 text-[var(--brand-light)] opacity-60" />
+          <div className="flex items-center gap-2">
+            <Zap className="h-3.5 w-3.5 text-[var(--brand-light)] opacity-60" />
+            {onPopOut && (
+              <button
+                onClick={onPopOut}
+                title="Pop out to separate window"
+                className="group h-7 w-7 rounded-[var(--radius-sm)] flex items-center justify-center border border-transparent text-[var(--text-muted)] hover:text-[var(--brand-light)] hover:border-[var(--brand)]/40 hover:bg-[var(--brand)]/[0.08] hover:shadow-[0_0_12px_rgba(255,107,53,0.4)] transition-all"
+              >
+                <Maximize2 className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
